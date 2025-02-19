@@ -3,4 +3,5 @@
     <string name="app_name">Parental Control</string>
     <string name="device_admin_label">Parental Control Device Admin</string>
     <string name="device_admin_description">Cho phép ứng dụng quản lý và chặn các ứng dụng khác</string>
+    <string name="accessibility_service_description">Dịch vụ này giúp kiểm soát và chặn các ứng dụng không phù hợp</string>
 </resources>

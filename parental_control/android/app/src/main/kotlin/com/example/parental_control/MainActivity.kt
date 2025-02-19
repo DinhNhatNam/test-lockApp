@@ -12,6 +12,7 @@ import android.content.ComponentName
 import android.os.Process
 import android.util.Log
 import android.os.Bundle
+import android.net.Uri
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.example.parental_control/app_usage"
@@ -78,6 +79,10 @@ class MainActivity: FlutterActivity() {
                         result.error("INVALID_ARGUMENTS", "Package name is null", null)
                     }
                 }
+                "openAccessibilitySettings" -> {
+                    openAccessibilitySettings()
+                    result.success(true)
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -124,5 +129,44 @@ class MainActivity: FlutterActivity() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(intent)
+    }
+
+    private fun openAccessibilitySettings() {
+        try {
+            // Cách 1: Mở trực tiếp đến settings của ứng dụng
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                data = Uri.parse("package:$packageName")
+            }
+            
+            // Nếu không mở được, thử cách 2
+            if (!tryStartActivity(intent)) {
+                // Cách 2: Mở màn hình Accessibility chung
+                val fallbackIntent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(fallbackIntent)
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error opening accessibility settings", e)
+            // Cách 3: Mở settings chung
+            try {
+                val settingsIntent = Intent(Settings.ACTION_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(settingsIntent)
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error opening settings", e)
+            }
+        }
+    }
+
+    private fun tryStartActivity(intent: Intent): Boolean {
+        return try {
+            startActivity(intent)
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 }

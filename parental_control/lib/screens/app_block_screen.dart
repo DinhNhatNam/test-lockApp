@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/app_usage_service.dart';
+import '../services/app_block_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _checkPermissionsAndLoadApps();
+    _checkAccessibilityService();
   }
 
  Future<void> _checkPermissionsAndLoadApps() async {
@@ -102,6 +103,36 @@ Future<void> _showPermissionDialog(BuildContext context) async {
     );
   }
 
+  Future<void> _checkAccessibilityService() async {
+    bool isEnabled = await _appUsageService.isAccessibilityServiceEnabled();
+    if (!isEnabled) {
+      if (mounted) {
+        _showAccessibilityDialog();
+      }
+    }
+  }
+
+  Future<void> _showAccessibilityDialog() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Cần cấp quyền'),
+        content: const Text(
+          'Để chặn ứng dụng hiệu quả, bạn cần bật dịch vụ Accessibility cho ứng dụng này.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _appUsageService.openAccessibilitySettings();
+            },
+            child: const Text('Mở cài đặt'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +143,10 @@ Future<void> _showPermissionDialog(BuildContext context) async {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _checkPermissionsAndLoadApps,
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => _appUsageService.openAccessibilitySettings(),
           ),
         ],
       ),
