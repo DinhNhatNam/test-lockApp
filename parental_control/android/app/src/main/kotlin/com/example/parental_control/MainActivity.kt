@@ -114,4 +114,15 @@ class MainActivity: FlutterActivity() {
             "admin" to isAdmin
         )
     }
+
+    private fun requestAdminPermission() {
+    val componentName = ComponentName(this, AdminReceiver::class.java)
+    val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+        putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
+        putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, 
+            "Cần quyền này để có thể chặn các ứng dụng khác")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        startActivity(intent)
+    }
 }
