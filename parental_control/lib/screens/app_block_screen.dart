@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/app_block_service.dart';
+import '../screens/activity_history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -147,6 +148,17 @@ Future<void> _showPermissionDialog(BuildContext context) async {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => _appUsageService.openAccessibilitySettings(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ActivityHistoryScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),

@@ -13,6 +13,9 @@ import android.os.Process
 import android.util.Log
 import android.os.Bundle
 import android.net.Uri
+import io.flutter.plugin.common.EventChannel
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.example.parental_control/app_usage"
@@ -88,6 +91,53 @@ class MainActivity: FlutterActivity() {
                 }
             }
         }
+
+        // Thêm channel mới cho activity tracking
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.example.parental_control/activity_tracking")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isTrackingServiceEnabled" -> {
+                        val enabled = isAccessibilityServiceEnabled()
+                        result.success(enabled)
+                    }
+                    "openTrackingSettings" -> {
+                        try {
+                            openAccessibilitySettings()
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("ERROR", e.message, null)
+                        }
+                    }
+                    else -> {
+                        result.notImplemented()
+                    }
+                }
+            }
+
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.example.parental_control/activity_events")
+            .setStreamHandler(
+                object : EventChannel.StreamHandler {
+                    override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                        // Đăng ký BroadcastReceiver để nhận thông tin hoạt động
+                        val receiver = object : BroadcastReceiver() {
+                            override fun onReceive(context: Context?, intent: Intent?) {
+                                val activityData = intent?.getStringExtra("activity_data")
+                                if (activityData != null) {
+                                    events.success(activityData)
+                                }
+                            }
+                        }
+                        registerReceiver(
+                            receiver,
+                            IntentFilter("com.example.parental_control.ACTIVITY_TRACKED")
+                        )
+                    }
+
+                    override fun onCancel(arguments: Any?) {
+                        // Hủy đăng ký receiver khi không cần nữa
+                    }
+                }
+            )
     }
 
     private fun hasUsageStatsPermission(): Boolean {
@@ -132,41 +182,56 @@ class MainActivity: FlutterActivity() {
     }
 
     private fun openAccessibilitySettings() {
-        try {
-            // Cách 1: Mở trực tiếp đến settings của ứng dụng
-            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                data = Uri.parse("package:$packageName")
-            }
-            
-            // Nếu không mở được, thử cách 2
-            if (!tryStartActivity(intent)) {
-                // Cách 2: Mở màn hình Accessibility chung
-                val fallbackIntent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                startActivity(fallbackIntent)
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error opening accessibility settings", e)
-            // Cách 3: Mở settings chung
-            try {
-                val settingsIntent = Intent(Settings.ACTION_SETTINGS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                startActivity(settingsIntent)
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error opening settings", e)
-            }
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
+        startActivity(intent)
     }
 
-    private fun tryStartActivity(intent: Intent): Boolean {
-        return try {
-            startActivity(intent)
-            true
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        try {
+            val accessibilityEnabled = Settings.Secure.getInt(
+                contentResolver,
+                Settings.Secure.ACCESSIBILITY_ENABLED
+            )
+            
+            if (accessibilityEnabled == 1) {
+                // Lấy danh sách service đã bật
+                val settingValue = Settings.Secure.getString(
+                    contentResolver,
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                ) ?: ""
+
+                // Tạo các biến tên service có thể có
+                val serviceNames = listOf(
+                    "$packageName/.BlockerAccessibilityService",
+                    "$packageName/com.example.parental_control.BlockerAccessibilityService",
+                    "com.example.parental_control/.BlockerAccessibilityService"
+                )
+
+                // Log tất cả thông tin để debug
+                Log.d("MainActivity", "Accessibility enabled: true")
+                Log.d("MainActivity", "Package name: $packageName")
+                Log.d("MainActivity", "Enabled services: $settingValue")
+                Log.d("MainActivity", "Checking service names: $serviceNames")
+
+                // Kiểm tra xem có service nào trong danh sách được bật không
+                val enabledServices = settingValue.split(':')
+                val isEnabled = serviceNames.any { serviceName ->
+                    enabledServices.any { 
+                        it.trim().equals(serviceName, ignoreCase = true)
+                    }
+                }
+                
+                Log.d("MainActivity", "Final check result: $isEnabled")
+                return isEnabled
+            }
+            
+            Log.d("MainActivity", "Accessibility is not enabled")
+            return false
         } catch (e: Exception) {
-            false
+            Log.e("MainActivity", "Error checking accessibility service", e)
+            return false
         }
     }
 }
